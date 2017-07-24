@@ -2,3 +2,5 @@
 ### Hadoop
 ### Spark
 ### zookeeper
+### kafka
+
