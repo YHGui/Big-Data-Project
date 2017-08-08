@@ -26,6 +26,6 @@ filter是一个数据结构，用来判断某个元素是否在集合内，具�
 - 什么是RDD？Resilient Distributed Dataset,说白了RDD是Spark操作的数据集的逻辑视图，而这个数据集在物理上会分布在各个机器上，我们甚至可以把RDD简单理解为一个分布式的list，它本身是不可修改的，immutable的数据结构可知，状态不会改变，可预知。一方面Spark能够处理更大的数据，同时Spark也能够并发处理这个数据集，提高速度。
 ### zookeeper
 ### kafka
-借鉴网上一张图表示一个big data pipeline，在远景智能实习期间做的与数据相关的项目中，平台团队开发的EnOS能源物联网平台在获取的时候是通过Kafka和Spark Streaming将各种能源相关设备（目前包括风机、电厂、智能硬件等灯硬件设备）按照规约接入之后的数据进行采集，而EnOS平台做的事提供了MapReduce算子平台，Spark平台，实时监控平台，对能源进行管理。因此在大部分的IoT都是按照这种方式接入的，EnOS还用了在后续还结合使用了Flume工具，在学习使用Spark Streaming和Kafka进行采集数据的时候，之前准备在网上找实时的金融时间序列数据，后来直接想按照相应的格式来进行simulation，后续基于采集的数据结合Spring Boot框架做相应的后台工作以及前端展示。
+借鉴网上一张图表示一个big data pipeline，在远景智能实习期间做的与数据相关的项目中，平台团队开发的EnOS能源物联网平台在获取的时候是通过Kafka和Spark Streaming将各种能源相关设备（目前包括风机、电厂、智能硬件等灯硬件设备）按照规约接入之后的数据进行采集，而EnOS平台做的事提供了MapReduce算子平台，Spark平台，实时监控平台，对能源进行管理。因此在大部分的IoT都是按照这种方式接入的，EnOS还用了在后续还结合使用了Flume工具，在学习使用Spark Streaming和Kafka进行采集数据的时候，个人想法是通过google finance或者yahoo finance获取股票的实时数据，并且都有相应的Python module，十分方便，因此pip install之后，测试了下发现google finance直接不能用，猜想是wall的原因，平时的代理也仅仅是在浏览器用一下google，后来转战yahoo finance，可用，后来却发现不能再用了，似乎已经不支持了，网上还有人声称yahoo is dead，最后向国内肯定有相关的module，找到chinesestockapi，分别写了producer和consumer，并存储在Cassandra中，期间也直接想按照相应的格式来进行simulation，后续基于采集的数据结合Spring Boot框架做相应的后台工作以及前端展示。
 ![Alt text](https://github.com/YHGui/Big-Data-Project/blob/master/images/iot-architecture.png)
 
