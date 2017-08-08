@@ -1,5 +1,6 @@
 
-from googlefinance import getQuotes
+from cstock.request import Requester
+from cstock.hexun_engine import HexunEngine
 from kafka import KafkaProducer
 from kafka.errors import KafkaError, KafkaTimeoutError
 
@@ -30,8 +31,11 @@ def fetch_price(producer, symbol):
 	"""
 	logger.debug('Start to fetch stock price for %s', symbol)
 	try:
-
-		price = json.dumps(getQuotes(symbol))
+		engine = HexunEngine()
+		requester = Requester(engine)
+		stock_obj = requester.request(symbol)
+		#print stock_obj[0].as_dict()
+		price = json.dumps(stock_obj[0].as_dict())
 		logger.debug('Get stock info %s', price)
 		producer.send(topic=topic_name, value=price, timestamp_ms = time.time())
 		logger.debug('Sent stock price for %s to kafka', symbol)
