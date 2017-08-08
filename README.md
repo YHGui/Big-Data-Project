@@ -1,6 +1,6 @@
 # Project about big data 
 ### Hadoop
-在这里面我将总结自己学习Hadoop ecosystem相关的一些知识，包括Google的“三架马车”的初略阅读，以及总结大众点评CANAAN平台和原生MapReduce的优缺点。
+在这里面我将总结自己学习Hadoop ecosystem相关的一些知识，包括Google的“三架马车”的初略阅读。
 整个搜索引擎分为三层，文件层（file，GFS），data model（BigTable），计算层（algorithm，MapReduce），缺少了底层的操作系统层。但是MapReduce会访问底层文件（GFS），为什么会操作访问底层文件呢？是为了提高性能。
 首先是GFS，是为了解决一个问题：如何保存一个文件？->如何保存一个大文件？
 - 改变一个block（1024Byte）的大小，改为一个chunk（64MB）的大小，当然这里存储小文件的话会浪费空间
@@ -23,7 +23,7 @@ filter是一个数据结构，用来判断某个元素是否在集合内，具�
 第三个是MapReduce，MapReduce能够代表所有计算的原因是因为其核心是分治法，先拆解再组合，大部分问题都可以归结为这种计算范式。
 ### Spark
 - 什么是Spark？Spark已经成为了具有调度和管理能力的通用分布式计算引擎。相对于传统的MapReduce，Spark砍掉了将中间的数据存回HDFS的消耗，并且通过记录计算过程的方式又砍掉了复制多份数据的消耗，因此取得了10-100倍的提速（传输数据速度如下，内存：10GB/s，硬盘：100MB/s，SSD：600MB/s，同机架网络传输：125MB/s，跨机架网络传输：12.5MB/s）。
-- 什么是RDD？Resilient Distributed Dataset,说白了RDD是Spark操作的数据集的逻辑视图，而这个数据集在物理上会分布在各个机器上，我们甚至可以把RDD简单理解为一个分布式的list。一方面Spark能够处理更大的数据，同时Spark也能够并发处理这个数据集，提高速度。
+- 什么是RDD？Resilient Distributed Dataset,说白了RDD是Spark操作的数据集的逻辑视图，而这个数据集在物理上会分布在各个机器上，我们甚至可以把RDD简单理解为一个分布式的list，它本身是不可修改的，immutable的数据结构可知，状态不会改变，可预知。一方面Spark能够处理更大的数据，同时Spark也能够并发处理这个数据集，提高速度。
 ### zookeeper
 ### kafka
 借鉴网上一张图表示一个big data pipeline，在远景智能实习期间做的与数据相关的项目中，平台团队开发的EnOS能源物联网平台在获取的时候是通过Kafka和Spark Streaming将各种能源相关设备（目前包括风机、电厂、智能硬件等灯硬件设备）按照规约接入之后的数据进行采集，而EnOS平台做的事提供了MapReduce算子平台，Spark平台，实时监控平台，对能源进行管理。因此在大部分的IoT都是按照这种方式接入的，EnOS还用了在后续还结合使用了Flume工具，在学习使用Spark Streaming和Kafka进行采集数据的时候，之前准备在网上找实时的金融时间序列数据，后来直接想按照相应的格式来进行simulation，后续基于采集的数据结合Spring Boot框架做相应的后台工作以及前端展示。
