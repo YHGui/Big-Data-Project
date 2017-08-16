@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
     # - instantiate a kafka stream for processing
     directKafkaStream = KafkaUtils.createDirectStream(ssc, [topic], {'metadata.broker.list': brokers})
-
+    process_stream(directKafkaStream)
 
 
     # - instantiate a simple kafka producer

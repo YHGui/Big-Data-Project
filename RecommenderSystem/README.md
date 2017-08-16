@@ -28,7 +28,7 @@ co-occurrence矩阵，同时看了两部电影的人数，对两部电影来说�
 因为co-occurrence矩阵不能通过绝对值来对比，需要考虑基数的影响，归一化就是将基数变为1，消除基数的影响。
 4. co-occurrence矩阵和rating矩阵相乘得到推荐结果
 相乘的意义：用户的喜好（分数）* 相关性 
-不能将稀疏矩阵数据直接存入HDF，存入的数据格式是：用户Id，电影Id，评分。
+不能将稀疏矩阵数据直接存入HDFS，存入的数据格式是：用户Id，电影Id，评分。
 5. 如何测试？预期的结果和真实的数据相比
 ## install Docker
 - visit https://docs.docker.com/docker-for-mac/ for docker for Mac

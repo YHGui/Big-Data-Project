@@ -23,7 +23,10 @@ filter是一个数据结构，用来判断某个元素是否在集合内，具�
 第三个是MapReduce，MapReduce能够代表所有计算的原因是因为其核心是分治法，先拆解再组合，大部分问题都可以归结为这种计算范式。
 ### Spark
 - 什么是Spark？Spark已经成为了具有调度和管理能力的通用分布式计算引擎。相对于传统的MapReduce，Spark砍掉了将中间的数据存回HDFS的消耗，并且通过记录计算过程的方式又砍掉了复制多份数据的消耗，因此取得了10-100倍的提速（传输数据速度如下，内存：10GB/s，硬盘：100MB/s，SSD：600MB/s，同机架网络传输：125MB/s，跨机架网络传输：12.5MB/s）。
-- 什么是RDD？Resilient Distributed Dataset,说白了RDD是Spark操作的数据集的逻辑视图，而这个数据集在物理上会分布在各个机器上，我们甚至可以把RDD简单理解为一个分布式的list，它本身是不可修改的，immutable的数据结构可知，状态不会改变，可预知。一方面Spark能够处理更大的数据，同时Spark也能够并发处理这个数据集，提高速度。
+- 什么是RDD？Resilient Distributed Dataset,RDD是lazy evaluation，说白了RDD是Spark操作的数据集的逻辑视图，而这个数据集在物理上会分布在各个机器上，我们甚至可以把RDD简单理解为一个分布式的list，它本身是不可修改的，immutable的数据结构可知，状态不会改变，可预知。不同的数据来源是不同的RDD。一方面Spark能够处理更大的数据，同时Spark也能够并发处理这个数据集，提高速度。执行过程，每一个会单独产生task，task执行逻辑是一样的。
+- lifecycle of a Spark program：1. Create some input RDDs from external data or parallelize a collection in your driver program. 2. Lazily transform them to define new RDDs using transformations like filter() or map(). 3. Ask Spark to cache() any intermediate RDDs that will need to be reused. 4. Launch actions such as count() and collect() to kick off a parallel computation, which is then optimized and executed by Spark.
+- 最近在看Sameer Farooqui的Advanced Apache Spark Training视频，pdf链接为：https://spark-summit.org/wp-content/uploads/2015/03/SparkSummitEast2015-AdvDevOps-StudentSlides.pdf
+
 ### zookeeper
 ### kafka
 借鉴网上一张图表示一个big data pipeline，在远景智能实习期间做的与数据相关的项目中，平台团队开发的EnOS能源物联网平台在获取的时候是通过Kafka和Spark Streaming将各种能源相关设备（目前包括风机、电厂、智能硬件等灯硬件设备）按照规约接入之后的数据进行采集，而EnOS平台做的事提供了MapReduce算子平台，Spark平台，实时监控平台，对能源进行管理。因此在大部分的IoT都是按照这种方式接入的，EnOS还用了在后续还结合使用了Flume工具，在学习使用Spark Streaming和Kafka进行采集数据的时候，个人想法是通过google finance或者yahoo finance获取股票的实时数据，并且都有相应的Python module，十分方便，因此pip install之后，测试了下发现google finance直接不能用，猜想是wall的原因，平时的代理也仅仅是在浏览器用一下google，后来转战yahoo finance，可用，后来却发现不能再用了，似乎已经不支持了，网上还有人声称yahoo is dead，最后向国内肯定有相关的module，找到chinesestockapi，分别写了producer和consumer，并存储在Cassandra中，期间也直接想按照相应的格式来进行simulation，后续基于采集的数据结合Spring Boot框架做相应的后台工作以及前端展示。
