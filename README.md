@@ -32,6 +32,10 @@ filter是一个数据结构，用来判断某个元素是否在集合内，具�
 ![Alt text](https://github.com/YHGui/Big-Data-Project/blob/master/images/YARN-Spark-2.png)
 Spark在YARN运行有两种运行方法，一种是在client里面有driver，运行过程中client需要一直存活，这是交互运行的情形，另一种模式是cluster模式，driver在app master里面协调运行，提交后就可以做其他事情，直到运行结束。
 yarn可以配置executors和executor的RAM和executor的core，YARN会借助计时器动态调整executor的数目，少则不断添加，同时计时器频率会变，直到上限，借助计时器也能检查executor的工作状态，空闲则减少executor数目。
+- 数据如何存？一般来说，75%的内存用于Spark，其余给操作系统使用，每个executor的heap最小为8G，最大就依赖于GC，可能40G左右，和存储方式以及序列化的方式有关。存储数据有两种方式：内存以及内存+硬盘，内存足则放内存，否则将object序列化之后存在硬盘上。为了防止数据丢失带来影响，可以为数据制备复本，内存硬盘ssd可以产生多种组合，得到一个折衷的组合。在Spark中接入了Tychyon，它是一个缓存系统，它是独立的存储系统，如果一个Spark节点挂了，在Tychyon中有缓存的RDD数据，Tychyon是序列化的数据，那么可以跨语言跨平台支持的，支持统一访问，Tychyon已经改名为Alluxio。Spark存数据的原则是尽量放在内存中，内存不足将数据序列化后存放，尽量不在硬盘中读写，一般情况下不要做备份，除非非常极端的情况下。Executor中JVM的默认的内存分配是6:2:2，分别是RDD，shuffle的内存和用户程序等内存，因此在调节的时候一般调后面两个，比如运行到shuffle就挂掉，可能就是shuffle内存不足。为了提高序列化的效率可以使用KRYO来代替Java的序列化。
+- Spark如何执行任务？
+![Alt text](https://github.com/YHGui/Big-Data-Project/blob/master/images/schedule-process.png)
+概念：广播时引入bittorent（p2p）
 ### zookeeper
 ### kafka
 借鉴网上一张图表示一个big data pipeline，在远景智能实习期间做的与数据相关的项目中，平台团队开发的EnOS能源物联网平台在获取的时候是通过Kafka和Spark Streaming将各种能源相关设备（目前包括风机、电厂、智能硬件等灯硬件设备）按照规约接入之后的数据进行采集，而EnOS平台做的事提供了MapReduce算子平台，Spark平台，实时监控平台，对能源进行管理。因此在大部分的IoT都是按照这种方式接入的，EnOS还用了在后续还结合使用了Flume工具，在学习使用Spark Streaming和Kafka进行采集数据的时候，个人想法是通过google finance或者yahoo finance获取股票的实时数据，并且都有相应的Python module，十分方便，因此pip install之后，测试了下发现google finance直接不能用，猜想是wall的原因，平时的代理也仅仅是在浏览器用一下google，后来转战yahoo finance，可用，后来却发现不能再用了，似乎已经不支持了，网上还有人声称yahoo is dead，最后向国内肯定有相关的module，找到chinesestockapi，分别写了producer和consumer，并存储在Cassandra中，期间也直接想按照相应的格式来进行simulation，后续基于采集的数据结合Spring Boot框架做相应的后台工作以及前端展示。
