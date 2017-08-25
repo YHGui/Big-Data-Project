@@ -104,8 +104,11 @@ yarn可以配置executors和executor的内存和executor的cpu core数，源码�
   - Datases&DataFrame：结构化数据。Dataframe = Dataset[Row]，Dataset强制类型检查。
   - SparkSession is the SparkContext for Dataset/DataFrame，不仅能处理数据，还包含元数据。
   - 流处理：实时计算（批量计算，交互式查询）出问题：延迟，故障恢复，分布式读写。将底层流看成无限大的数据库，不需要管底层，Spark越来越智能。
+  - Spark已经成为一个分布式编译器
 ### zookeeper
 ### kafka
 借鉴网上一张图表示一个big data pipeline，在远景智能实习期间做的与数据相关的项目中，平台团队开发的EnOS能源物联网平台在获取的时候是通过Kafka和Spark Streaming将各种能源相关设备（目前包括风机、电厂、智能硬件等灯硬件设备）按照规约接入之后的数据进行采集，而EnOS平台做的事提供了MapReduce算子平台，Spark平台，实时监控平台，对能源进行管理。因此在大部分的IoT都是按照这种方式接入的，EnOS还用了在后续还结合使用了Flume工具，在学习使用Spark Streaming和Kafka进行采集数据的时候，个人想法是通过google finance或者yahoo finance获取股票的实时数据，并且都有相应的Python module，十分方便，因此pip install之后，测试了下发现google finance直接不能用，猜想是wall的原因，平时的代理也仅仅是在浏览器用一下google，后来转战yahoo finance，可用，后来却发现不能再用了，似乎已经不支持了，网上还有人声称yahoo is dead，最后向国内肯定有相关的module，找到chinesestockapi，分别写了producer和consumer，并存储在Cassandra中，期间也直接想按照相应的格式来进行simulation，后续基于采集的数据结合Spring Boot框架做相应的后台工作以及前端展示。
 ![Alt text](https://github.com/YHGui/Big-Data-Project/blob/master/images/iot-architecture.png)
+了解的公司内部的技术栈为：
+![Alt text](https://github.com/YHGui/Big-Data-Project/blob/8181867acefe5e46e965344b31941e2afb667701/images/architecture.jpeg)
 
