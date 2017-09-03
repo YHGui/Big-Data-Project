@@ -40,11 +40,11 @@ advanced → registry mirrors.(Daocloud:https://www.daocloud.io/mirror)
 - sudo ./start-hadoop.sh
 ## Mapper-Reducer
 five map reduce job in code
-1. 用户看过多少电影，以及评分，map：用户区分，以用户Id为key，reduce：merge阶段，统计用户看过多少电影。
+1. 用户看过多少电影，以及评分，map：用户区分，以用户Id为key，reduce：merge阶段，统计用户看过多少电影。input user,movie,rating ==> key = user value=movie1:rating, movie2:rating...
 2. 建立co-occurrence矩阵，同时看过一部电影的人数。
-3. 归一化处理
+3. 归一化处理，不能根据绝对值来进行计算
 4. co-occurrence矩阵和rating矩阵相乘
-这里的优化在于不能将两个矩阵存入内存中然后相乘，一来太慢，而且可能会出现oom的后果，可以理由矩阵相乘和线性代数的本质进行计算，每次读入矩阵的一个
+这里的优化在于不能将两个矩阵存入内存中然后相乘，一来太慢，而且可能会出现oom的后果，可以理解矩阵相乘和线性代数的本质进行计算，每次读入矩阵的一个
 单元，或者说是列向量，然后相乘。
 5. 各个单元的积求和得到结果。
 ## run
