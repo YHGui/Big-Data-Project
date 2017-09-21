@@ -9,36 +9,50 @@
 在这里面我将总结自己学习Hadoop ecosystem相关的一些知识，包括Google的“三架马车”的初略阅读。
 整个搜索引擎分为三层，文件层（file，GFS），data model（BigTable），计算层（algorithm，MapReduce），缺少了底层的操作系统层。但是MapReduce会访问底层文件（GFS），为什么会操作访问底层文件呢？是为了提高性能。
 首先是GFS，是为了解决一个问题：如何保存一个文件？->如何保存一个大文件？
-- 改变一个block（1024Byte）的大小，改为一个chunk（64MB）的大小，当然这里存储小文件的话会浪费空间
-- 如果文件是超大文件呢？一个master server加上许多个chunk server，这时候master server和chunk server之间的沟通成本太大，因此master只能存chunk在哪个chunk server，而不存在chunk server的offset，那么就需要在chunk server存每个chunk的offset，这也是符合内聚合，外解耦。
-- 我们可以看出这个过程却是不是很难，需要抓住重点。
+- 原本保存文件时，一个磁盘块为block大小为1024B，同时加入索引，为了存大文件，如果block过小，导致索引过多，因此改变一个block（1024Byte）的大小，改为一个chunk（64MB）的大小，减小元数据大小，避免IO频繁，当然这里存储小文件的话会浪费空间，导致效率较低。
+- 如果文件是超大文件呢？一个master server加上许多个chunk server，此时chunk server仅仅保存chunk块，而master server中meta data包含chunk所属server和偏移量，这时候master server和chunk server之间的沟通成本太大，因此只要chunk有点变化，master将会得到通知，因此master只能存chunk在哪个chunk server，而不存在chunk server的offset，那么就需要在chunk server存每个chunk的offset，同时减小了master的meta data的大小，这也是符合内聚合，外解耦。
+- 我们可以看出这个过程却是不是很难，需要抓住重点，然后就是顺其自然的。
 - 随着chunk的增多，必然会出现chunk的在硬盘上的broken，因此如何验证chunk是否broken呢？可以使用checksum来检验，读硬盘的时候可以对比它的checksum来验证是否broken。
 - 随着server的增多，如何避免chunkserver宕机后出现数据丢失呢？因此需要做热备，大多数系统总共是三备份，为了追求性能系统一般就是二备份，往往会将其中的两个放到一个数据中心，另外放到另外的数据中心，这是为了防止一个数据中心出事故所有的数据都丢失。
 - 如果一个备份宕机了，需要向master通知，并从master获取其他备份的数据，遵守就近原则，开启修复进程，进行数据恢复。
-- 如何确定server是否挂掉，server通过发送heartbeat来确定其是否存活，如果master挂掉，那么master的另一个影子备份会顶上，master和备份之间会同步log，往往在设计过程中，需要将master server的功能尽可能减小。
+- 如何确定server是否挂掉，server通过发送heartbeat来确定其是否存活，如果chunkserver挂掉，在master中可以查找其对应的备份server，进行数据恢复。如果master挂掉，那么master的另一个影子备份会顶上，master和备份之间会同步log，往往在设计过程中，需要将master server的功能尽可能减小，这样就减小master server宕机的概率。
 - 如何避免热点问题？
 - 开启一个进程来记录访问频率，如果发现经常被访问，就将其复制到多个服务器上。
-- 读文件的过程：client向master请求查找read某个文件，master会去目录结构查找，并找到对应的服务器，然后带上chunk handle去那个服务器read文件，读出相关文件，当然会根据多个文件位置就近寻找。
-- 写文件过程：先向master发出写请求，并确定三个中的的primary（选primary的作用是是为了写的顺序正确，统一），然后client会找最近的服务器开始往里面写，随后pipeline传输，达到速度最快，传完后会往回传，表示传输成功，但是这个时候只存于内存中，并没有写入硬盘中，需要约定好之后按照primary的定的统一顺序来进行读写。
+- 读文件的过程：client向master请求查找read某个文件，master会去目录结构查找，并找到对应的chunk server服务器，然后带上chunk handle去那个服务器read文件，读出相关文件，当然会根据多个文件位置就近寻找。
+- 写文件过程：先向master发出写请求，并确定三个中的的primary（选primary的作用是是为了写的顺序正确，统一），根据就近原则，client会找最近的服务器开始往里面写，随后pipeline传输，达到速度最快，传完后会往回传，表示传输成功，但是这个时候只存于内存中，并没有写入硬盘中，需要约定好之后按照primary的定的统一顺序来进行读写，primary参与协调，等都cache成功之后，发起write动作，完成后通知primary，primary告诉client。
 第二个是BigTable，解决支持范围查询，就是通过对key进行排序，key是table最重要的概念。如果要保存一个大表，则需要将一个大表存成许多小表，并有一个metadata，存有各个小表的地址等信息。如果需要存一个超大表，将小表再拆成小小表。
 - 如何往表里写数据？如果往表里写了一个数据，会往内存表里写一个数据，缓存住，如果内存表过大，就需要往硬盘上写。为了防止断电导致缓存丢失，则会每一次读写都写入log，log直接append在后面，因此速度也比较快，因此一个小表由缓存表和一系列小小表以及log组成。小小表是由对应了GFS的一个chunk的大小。
 - 如何读数据？由于小小表仅在内部有序，而在外部无序，因此为了读取数据的时候需要查找所有的小小表和内存表才能解决，为了加速数据读取，则需要加入index，那么就可以定位了，然后遍历小小表。为了读取速度更快，需要加入bloomfilter加速检索过程。bloomfilter本质就是多个hash，降低单个hash误判的可能性。
-- Bloom
-filter是一个数据结构，用来判断某个元素是否在集合内，具有运行快，内存占用小的特点。而高效插入和查询的代价就是，Bloom filter是一个基于概率的数据结构，只能告诉我们一个元素绝对不在集合内或可能在集合内，它的时间复杂度为O(k)
+- Bloom filter是一个数据结构，用来判断某个元素是否在集合内，具有运行快，内存占用小的特点。而高效插入和查询的代价就是，Bloom filter是一个基于概率的数据结构，只能告诉我们一个元素绝对不在集合内或可能在集合内，它的时间复杂度为O(k)
 - 逻辑层结构 -> 物理层结构：把非数据层的column综合作为key，数据层的值作为value，逻辑表就变成了物理表。
-第三个是MapReduce，MapReduce能够代表所有计算的原因是因为其核心是分治法，先拆解再组合，大部分问题都可以归结为这种计算范式。
+第三个是MapReduce，MapReduce能够代表所有计算的原因是因为其核心是分治法，先拆解再组合，大部分问题都可以归结为这种计算范式。完整过程分为以下七步：
+- 作业启动：开发者通过控制台启动作业
+- 作业初始化：切分数据，创建作业和提交作业
+- 作业／任务调度：1.0是JobTracker来负责任务调度，2.0版是Yarn中的ResourceManager负责整个系统的资源管理与分配
+- Map任务：数据输入，做初步的处理，输出形式的中间结果
+- Shuffle：按照partition，key对中间结果进行排序合并，输出给reduce线程
+  - 期望：
+  - 完整地从map task端拉取数据到reduce端
+  - 在跨节点拉去数据时，尽可能减少对带宽不必要消耗
+  - 减少磁盘IO对task执行的影响
+- Reduce任务：对相同的key的输入进行最终的处理，并将结果写入到文件中
+- 作业完成：通知开发者任务完成
 ### Spark
 - 最近在看Sameer Farooqui的Advanced Apache Spark Training视频，pdf链接为：https://spark-summit.org/wp-content/uploads/2015/03/SparkSummitEast2015-AdvDevOps-StudentSlides.pdf
 - 什么是Spark？Spark已经成为了具有调度、具有管理能力、监控功能的通用分布式计算引擎。相对于传统的MapReduce，Spark砍掉了将中间的数据存回HDFS的资源消耗，并且通过记录计算过程的方式又砍掉了复制多份数据的消耗，因此取得了10-100倍的提速（传输数据速度如下，内存：10GB/s，硬盘：100MB/s，SSD：600MB/s，同机架网络传输：125MB/s，跨机架网络传输：12.5MB/s）。
 运算处理时间为：（读取数据时间+处理时间+任务调度时间）再除以并行度。由于记录了运算的过程，因此不需要进行备份，只要在数据丢失了的时候就去重新计算一遍即可。
-- 什么是RDD？Resilient Distributed Dataset,弹性的分布式数据集，RDD是lazy evaluation，说白了RDD是Spark操作的数据集的逻辑视图，而这个数据集在物理上会分布在各个机器上，我们甚至可以把RDD简单理解为一个分布式的list，它本身是不可修改的，immutable的数据可知，状态不会改变，可预知，immutable数据不可变，那么就可以将数据分离拆解，各干各的。不同的数据来源是不同的RDD。一方面Spark能够处理更大的数据，同时Spark也能够并发处理这个数据集，提高速度。执行过程，每一个会单独产生task，task执行逻辑是一样的。
+- 什么是RDD？Resilient Distributed Dataset,弹性的分布式数据集，说白了RDD是Spark操作的数据集的逻辑视图，而这个数据集在物理上会分布在各个机器上，我们甚至可以把RDD简单理解为一个分布式的list，它本身是不可修改的，immutable的数据可知，状态不会改变，可预知，immutable数据不可变，那么就可以将数据分离拆解，各干各的。不同的数据来源是不同的RDD。一方面Spark能够处理更大的数据，同时Spark也能够并发处理这个数据集，提高速度。执行过程，每一个会单独产生task，task执行逻辑是一样的。
+  - 容错性：创建数据检查点和记录更新，RDD是采用第二种，利用血统关系。
+  - RDD是一个抽象类，使用的RDD实例都是RDD的子类，例如执行map转换操作之后得到一个MapPartitionRDD实例，执行groupByKey转换操作之后可以得到一个shuffleRDD实例。不同的RDD子类会根据实际需求实现各自的功能。
+  - Partition：RDD内部在逻辑上和物理上被划分成多个小子集合，每一个集合称为分区。实现：index成员，表示在RDD中的编号，通过RDD编号和分区编号可以唯一确定该分区对应的块编号，利用底层数据存储层提供的接口，就能从存储介质（HDFS、memory）中提取出分区对应的数据。
+  - 尽可能使得RDD分区数等于集群核心数目，每个分区的计算任务交给单个核心执行，能够保证最大的计算效率。
 - 如何创建RDD？
-  - 生成变量一样，int a = 5；
+  - 生成变量一样，int a = 5；在驱动器程序里分发驱动器程序中的对象集合。
   - 从外部读数据，RDD就是Spark中的变量。 
 - RDD进过过滤之后，可以进行重新分区，这是需要通过网络进行混洗的，然后创建出新的分区，当然代价比较大，优化的版本是coalesce()，能够确保合并到比现在分区数更少的分区中，但是这个过程Spark是不进行运行计算的，了解了全局就能进行各种优化，只有在用户需要获取这些数据的时候，才会开始执行，在每个stage中是可以并行流水化的，stage之间就是传输数据，每个stage要在一起进行优化。
 - RDD基本特征：
-  - A list of partitions
-  - A function for computing each split
+  - A list of partitions：分区列表，放到slices容器中，每个容器就是一个分区，所有容器构成了分区列表。
+  - A function for computing each split：一个用于计算分区中数据的函数，返回分区的迭代器。
   - A list of dependencies on other RDDs（窄依赖，被一个子分区使用；宽依赖，被多个子分区使用）
   - Optionally, a Partitioner for key-value RDDs (e.g. to say that the RDD is hash-partitioned)，基于hash来进行partition
   - Optionally, a list of preferred locations to compute each split on (e.g. block locations for an HDFS file)，倾向于数据在哪就在那进行计算
@@ -46,11 +60,15 @@ filter是一个数据结构，用来判断某个元素是否在集合内，具�
   - filteredRDD，和父母的partition一致，依赖就是和父母一一对应，将数据和父母在同一个位置计算，这样仍然是处于本地。
   - joinRDD则不一样，它的数据来源于每一个父亲，每个reduce的task的数据拿过来进行运算，因此较为优化的计算地址就没有了，可以通过hash的方法来进行partition。
   - spark中运算前能过滤好，尽量先过滤。
-- lifecycle of a Spark program：1. Create some input RDDs from external data or parallelize a collection in your driver program. 2. Lazily transform them to define new RDDs using transformations like filter() or map(). 3. Ask Spark to cache() any intermediate RDDs that will need to be reused. 4. Launch actions such as count() and collect() to kick off a parallel computation, which is then optimized and executed by Spark.
+- lifecycle of a Spark program：
+  1. Create some input RDDs from external data or parallelize a collection in your driver program. 
+  2. Lazily transform them to define new RDDs using transformations like filter() or map(). 
+  3. Ask Spark to cache() any intermediate RDDs that will need to be reused. 
+  4. Launch actions such as count() and collect() to kick off a parallel computation, which is then optimized and executed by Spark.
 - Spark的local运行模式：
   - 启动一个JVM，包括Driver和Executor进程，启动spark的local模式，同时有多个任务在执行，local模式下，根据内部的线程来执行任务。
 - standalone模式
-  - 自己管理自己的多台机器，首先如果有台机器，会有一个master来管理，每台机器上会有一个worker，worker向master注；册沟通，使得master能调度里面的资源，每台机器包含RDD的不同分片，也有可能有复本的情况，	然后每台机器的执行器会有多个运行的任务task，运行后将结果返回给driver，通过会痛自身的块管理器为用户程序中要求缓存的RDD提供内存式存储。
+  - 自己管理自己的多台机器，首先如果有台机器，会有一个master来管理，每台机器上会有一个worker，worker向master注册沟通，使得master能调度里面的资源，每台机器包含RDD的不同分片，也有可能有复本的情况，	然后每台机器的执行器会有多个运行的任务task，运行后将结果返回给driver，通过会痛自身的块管理器为用户程序中要求缓存的RDD提供内存式存储。
   - 为了实现HA高可用性，可以在woker上面加载多个spark master，他们之间通过zookeeper来管理。
   - 一个worker也能对应多个executor，一般一个worker给一个driver只会开一个executor，因此要在一个worker给同样的driver开多个executor，就可以在一台机器上开多个worker，这些都是Spark的配置。Spark默认都是FIFO的模式提交driver，可以配置spark的core数量以及executor执行器的内存配置。
 - 运行Spark应用的详细过程：
