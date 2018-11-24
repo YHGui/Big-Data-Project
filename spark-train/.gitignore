@@ -1,0 +1,34 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IntelliJ project files
+.idea
+*.iml
+out
+gen
+*.iws
+*.ipr
+
+
+findbugs/
+target/
+logs/
+.settings/
+.classpath
+.project
+.DS_Store
+/bin/
+
+
+
